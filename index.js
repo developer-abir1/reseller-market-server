@@ -18,7 +18,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
     const userCollection = client.db('sceoundBikeDb').collection('users');
 
     const productsCollection = client
