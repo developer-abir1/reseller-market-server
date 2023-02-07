@@ -16,6 +16,21 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ massage: ' unauthorization access' });
+  }
+  const token = authHeader.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ massage: ' forbidden access' });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 async function run() {
   try {
     const userCollection = client.db('sceoundBikeDb').collection('users');
@@ -25,25 +40,45 @@ async function run() {
       .collection('products');
     const bookingCollection = client.db('sceoundBikeDb').collection('booking');
 
-    //jwt token
+    //jwt token ----------------------------------------------
 
-    app.post('/products', async (req, res) => {
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: '2h',
+      });
+      res.send({ token });
+    });
+
+    app.post('/products', verifyToken, async (req, res) => {
       const product = req.body;
       const result = await productsCollection.insertOne(product);
       res.send(result);
     });
 
     // get all products
-    app.get('/products', async (req, res) => {
+    app.get('/products', verifyToken, async (req, res) => {
       const cursor = productsCollection.find({});
       const products = await cursor.toArray();
       res.send(products);
     });
     // get single Products
-    app.get('/product', async (req, res) => {
+    app.get('/product', verifyToken, async (req, res) => {
+      const decoded = req.decoded;
+
+      if (decoded.email !== req.query.email) {
+        res.status(403).send({ message: ' forbidden Access' });
+      }
+
       const email = req.query.email;
       const query = { email: email };
       const result = await productsCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get('/product/:id', verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.findOne(query);
       res.send(result);
     });
 
@@ -132,7 +167,6 @@ async function run() {
       const result = await userCollection.updateOne(filter, updateDoc, option);
       res.send(result);
     });
-    console.log('database connected');
     // <-------------------------------------------------------------------------------------------------------------------------------------------->
   } finally {
   }
