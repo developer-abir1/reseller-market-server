@@ -50,14 +50,8 @@ async function run() {
       res.send({ token });
     });
 
-    app.post('/products', verifyToken, async (req, res) => {
-      const product = req.body;
-      const result = await productsCollection.insertOne(product);
-      res.send(result);
-    });
-
     // get all products
-    app.get('/products', verifyToken, async (req, res) => {
+    app.get('/products', async (req, res) => {
       const cursor = productsCollection.find({});
       const products = await cursor.toArray();
       res.send(products);
@@ -69,19 +63,30 @@ async function run() {
       if (decoded.email !== req.query.email) {
         res.status(403).send({ message: ' forbidden Access' });
       }
-
       const email = req.query.email;
       const query = { email: email };
       const result = await productsCollection.find(query).toArray();
       res.send(result);
     });
-    app.get('/product/:id', verifyToken, async (req, res) => {
+    app.get('/product/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: ObjectId(id) };
       const result = await productsCollection.findOne(query);
       res.send(result);
     });
 
+    // delete single product
+    app.delete('/product/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await productsCollection.deleteOne(query);
+      res.send(result);
+    });
+    app.post('/products', async (req, res) => {
+      const product = req.body;
+      const result = await productsCollection.insertOne(product);
+      res.send(result);
+    });
     // save login user in database
     app.post('/users', async (req, res) => {
       const email = req.query.email;
@@ -96,13 +101,15 @@ async function run() {
     });
 
     app.get('/users', async (req, res) => {
+      const result = await userCollection.find({}).toArray();
+      res.send(result);
+    });
+    app.get('/users/profile', async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
-      const result = userCollection.find(query);
-      const users = await result.toArray();
-      res.send(users);
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
     });
-
     // -------------------------------------------------------------------- update user profile -------------------------------------------------
 
     app.put('/users/:id', async (req, res) => {
@@ -125,25 +132,41 @@ async function run() {
 
     // -------------------------------------------------------------------- update user profile end -------------------------------------------------
     // -----------------------------------------user product booking---------------------------------------------------------------------------------------
-
+    //
+    // app.get('/booking', async (req, res) => {
+    //   const result = await bookingCollection.find({}).toArray();
+    //   res.send(result);
+    // });
+    app.get('/booking', async (req, res) => {
+      const result = await bookingCollection.find({}).toArray();
+      res.send(result);
+    });
+    app.get('/booking', async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await bookingCollection.find(query).toArray();
+      res.send(result);
+    });
     app.post('/booking', async (req, res) => {
       const booking = req.body;
       const result = await bookingCollection.insertOne(booking);
       res.send(result);
     });
 
-    app.get('/booking', async (req, res) => {
-      const result = await bookingCollection.find({}).toArray();
-      res.send(result);
-    });
-
     // <-------------------------------------------------------------------------------------------------------------------------------------------->
     //  admin panel
-    app.get('/users/admin', async (req, res) => {
+
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const user = await userCollection.findOne(query);
+      res.send({ isAdmin: user?.role === 'admin' });
+    });
+    app.get('/users', async (req, res) => {
       const result = await userCollection.find({}).toArray();
       res.send(result);
     });
-
+    // -------------------------------------------------------------------- update user profile -------------------------------------------------
     app.put('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: ObjectId(id) };
